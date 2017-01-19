@@ -27,6 +27,7 @@
 using namespace std;
 using namespace std::chrono;
 
+
 typedef size_t Vertex;
 typedef pair <Vertex, Vertex> Edge;
 typedef map <Vertex, vector <Edge> > Incidence_List;
@@ -79,7 +80,7 @@ size_t degree(const Vertex &v){
         }
         catch (exception &e) {
                 cerr << "Something happened in getting the degree of "
-                << v <<". Maybe it is not in the graph?" << endl;
+                     << v <<". Maybe it is not in the graph?" << endl;
                 return -1;
         }
 }
@@ -111,7 +112,6 @@ void addDirectedEdge(const Edge &e, double w = 0){
         /*
          * Same goes for the edge e
          */
-
         this->edges.insert(e);
 
         /*
@@ -128,7 +128,7 @@ void addDirectedEdge(const Edge &e, double w = 0){
         }
         catch (exception &ex) {
                 cerr << "Error, something happened when trying to "
-                << "append edge " << e << endl;
+                     << "append edge " << e << endl;
         }
 
         return;
@@ -154,7 +154,7 @@ void removeDirectedEdge(const Edge &e){
         // graph's set of edges
         if (this->edges.find(e) == this->edges.end()) {
                 cerr << "Strange, the edge " << e
-                <<" is not registered in the graph!" << endl;
+                     <<" is not registered in the graph!" << endl;
         } // if
 
         // erasing from sets is not that difficult
@@ -189,7 +189,7 @@ void removeDirectedEdge(const Edge &e){
 //			}
 //		}
         return;
-}   // removeDirectedEdge
+}     // removeDirectedEdge
 
 /* Let's overload the edge removal function
  * to work with two given vertices
@@ -217,7 +217,7 @@ void print_incList(){
                 } // for all incident edges to v
                 cout << endl;
         } // for all vertices v
-}   // void print_incList()
+}     // void print_incList()
 
 /*
  * A DFS (depth-first-search) function
@@ -254,7 +254,7 @@ void DFS(Vertex s, map<Vertex, Vertex> &preds){
                         } // if not discovered[u]
                 } // for incident edges to v
         } // while d_stack is not empty
-}   // function DFS
+}     // function DFS
 
 /*
  * We would like to know if a graph is a cycle
@@ -313,7 +313,7 @@ bool is_cycle(){
                                                          */
                                                         return false;
                                                 } // if (preds[v] != u)
-                                                else break;  // stop the dfs traversal
+                                                else break; // stop the dfs traversal
                                         }
                                 } // else (u has been discovered before)
                         } // for incident edges to v
@@ -341,14 +341,14 @@ bool is_cycle(){
                 Vertex u = *v_iter;
                 if (this->degree(u) != feasible_degree) {
                         return false;
-                } //if
+                }     //if
         } // for all vertices
 
         /* So far nothing strange has happened.
          * The graph must be a cycle.
          */
         return true;
-}   // is_cycle()
+}     // is_cycle()
 
 double total_weight(){
         double sum = 0;
@@ -371,10 +371,10 @@ double timedif(const struct timeval& tv_start, const struct timeval& tv_end){
         return (double)seconds + (double)useconds/1000000.0;
 }
 
-double forcedTSP( Graph &G,
-                  Graph &F,
-                  double lowerbound
-                  )
+double forcedTSP(   Graph &G,
+                    Graph &F
+                    /* any parameters related to bounding? */
+                    )
 {
         // What if G and F are different types directed/undirected?
         if (G.isDirected != F.isDirected) {
@@ -388,14 +388,6 @@ double forcedTSP( Graph &G,
         static double incumbent = INFINITY;
         //You can use the "incumbent" variable for bounding operations!
 
-        // If lower bound bigger than upper bound, not compute more.
-        if (incumbent < lowerbound) {
-                if(DEBUG){
-                  cout << "stop search" << lowerbound << ">" << incumbent << endl;
-                }
-                return INFINITY;
-        }
-
         branches++; // Let's just keep track how many times we've branched
         if (DEBUG) {
                 // Print some messages to track the progress
@@ -405,8 +397,6 @@ double forcedTSP( Graph &G,
                         cout << "Branches: " << branches << endl;
                         cout << "Elapsed time: " << timedif(tv_global, tv_local)
                              << " seconds" << endl;
-                        cout << "incumbent" << incumbent << endl;
-                        cout << "lowerbound" << lowerbound << endl;
                 }
         }
 
@@ -421,7 +411,7 @@ double forcedTSP( Graph &G,
                         // we update the invumbent solution
                         return tw;
                 }
-                else return INFINITY;  // return INFINITY if F is not a solution
+                else return INFINITY; // return INFINITY if F is not a solution
 
                 if (DEBUG) {
                         // Print some messages to track the progress
@@ -440,17 +430,14 @@ double forcedTSP( Graph &G,
 
                 /********************************************************
                 *
-                *     Add your own
-                *     REDUCTION and BOUNDING operations
+                *       Add your own
+                *       REDUCTION and BOUNDING operations
                 *
                 ********************************************************/
 
 
                 // just pick an edge (is picking any edge good enough?)
                 Edge e = *G.edges.begin();
-                double weight_e = G.weightMap[e];
-                // std::cout << "selected edge: " << e.first << e.second << '\n';
-
 
                 // prepare 2 copies of F
                 Graph F_force(F);
@@ -468,34 +455,13 @@ double forcedTSP( Graph &G,
                         F_force.addDirectedEdge(ee, G.weightMap[ee]);
                 }
 
-                // If graph G has two node on edge e, no more search.
-                int count1 = 0;
-                int count2 = 0;
-                // 
-                // for (auto e_iter = F.edges.begin();
-                //      e_iter != F.edges.end();
-                //      e_iter++) {
-                //         Edge e_i = *e_iter;
-                //         if (e_i.first == e.first || e_i.second == e.first) count1 += 1;
-                //         if (e_i.first == e.second || e_i.second == e.second) count2 += 1;
-                // }
-
                 // call the Force branch recursively
                 double ans_force;
-                double ans_lbound = lowerbound + weight_e;
-
-                if(count1 > 2 || count2 > 2 || ans_lbound > incumbent) {
-                        // std::cout << "the route cant Hamiltonian root" << '\n';
-                        ans_force = INFINITY;
-                }
-                else{
-                  ans_force = forcedTSP(Gfd, F_force, ans_lbound);
-                }
-
+                ans_force = forcedTSP(Gfd, F_force);
 
                 // call the Delete branch recursively
                 double ans_delete;
-                ans_delete = forcedTSP(Gfd, F_delete, lowerbound);
+                ans_delete = forcedTSP(Gfd, F_delete);
 
                 if (ans_force < ans_delete) {
                         F = Graph(F_force);
@@ -517,8 +483,12 @@ double uniform(double min, double max){
  */
 inline std::string trim(const std::string &s)
 {
-        auto wsfront=std::find_if_not(s.begin(),s.end(),[] (int c){return std::isspace(c); });
-        return std::string(wsfront,std::find_if_not(s.rbegin(),std::string::const_reverse_iterator(wsfront),[] (int c){return std::isspace(c); }).base());
+        auto wsfront=std::find_if_not(s.begin(),s.end(),[](int c){
+                return std::isspace(c);
+        });
+        return std::string(wsfront,std::find_if_not(s.rbegin(),std::string::const_reverse_iterator(wsfront),[](int c){
+                return std::isspace(c);
+        }).base());
 }
 
 /* A function to read a tsplib file from an input stream,
@@ -620,8 +590,7 @@ int main(int argc, char **argv){
         gettimeofday(&tv_global, NULL);
         steady_clock::time_point start = steady_clock::now();
 
-        double lbound = 0;
-        solVal = forcedTSP(g, ff, lbound);
+        solVal = forcedTSP(g, ff);
 
         gettimeofday(&tv_solutionTime, NULL);
 
