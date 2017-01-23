@@ -262,7 +262,7 @@ void DFS(Vertex s, map<Vertex, Vertex> &preds){
 bool is_cycle(){
     // Let's check if the graph has vertices
     if (this->numOfVerts() == 0) {
-        cerr << "The graph is empty!" <<endl;
+        // cerr << "The graph is empty!" <<endl;
         return false;
     }
 
@@ -357,6 +357,7 @@ double total_weight(){
          e_iter++) {
         Edge e = *e_iter;
         double add = this->weightMap[e];
+        if (add > 32766) return INFINITY;
         if (not this->isDirected) add /= 2.0;
         sum += add;
     }     // for all edges
@@ -371,6 +372,10 @@ double timedif(const struct timeval& tv_start, const struct timeval& tv_end){
     return (double)seconds + (double)useconds/1000000.0;
 }
 
+static unsigned long long branches = 0;
+static unsigned long long leaves = 0;
+static int max_depth = 0;
+static unsigned long long can_calculate_leave_count = 0;
 double forcedTSP( Graph &G,
                   Graph &F,
                   double lowerbound
@@ -383,9 +388,11 @@ double forcedTSP( Graph &G,
     }
 
 
-    static unsigned long long branches = 0;
-    static unsigned long long leaves = 0;
     static double incumbent = INFINITY;
+    static unsigned long long not_have_edge_under_inf = 0;
+    static unsigned long long upper_lower_mis_detail = 0;
+    static unsigned long long upper_lower_mis_casual = 0;
+    static unsigned long long cant_make_cycle = 0;
     //You can use the "incumbent" variable for bounding operations!
 
     // If lower bound bigger than upper bound, not compute more.
@@ -393,7 +400,16 @@ double forcedTSP( Graph &G,
         if(DEBUG) {
             cout << "stop search" << lowerbound << ">" << incumbent << endl;
         }
+        upper_lower_mis_casual ++;
         return INFINITY;
+    }
+
+    // 残ったエッジの数を足してもcycleになりえない時探索終了
+    if (G.numOfEdges() + F.numOfEdges() < G.numOfVerts() * 2){
+      if(DEBUG){
+        std::cout << "stop search because lest edge is less than." << '\n';
+      }
+      return INFINITY;
     }
 
     branches++;     // Let's just keep track how many times we've branched
@@ -405,8 +421,13 @@ double forcedTSP( Graph &G,
             cout << "Branches: " << branches << endl;
             cout << "Elapsed time: " << timedif(tv_global, tv_local)
                  << " seconds" << endl;
-            cout << "incumbent" << incumbent << endl;
-            cout << "lowerbound" << lowerbound << endl;
+            cout << "incumbent: " << incumbent;
+            cout << "\tlowerbound: " << lowerbound << endl;
+            F.print_incList();
+            std::cout << "not have edge under inf: " << not_have_edge_under_inf << '\n';
+            std::cout << "upper_lower_mis_casual: " << upper_lower_mis_casual << '\n';
+            std::cout << "upper_lower_mis_detail: " << upper_lower_mis_detail << '\n';
+            std::cout << "cant_make_cycle: "<< cant_make_cycle << '\n';
         }
     }
 
@@ -417,6 +438,7 @@ double forcedTSP( Graph &G,
         // Then, let's see if F is a Hamiltonian cycle in G
         if (F.numOfVerts() == G.numOfVerts() && F.is_cycle()) {
             double tw = F.total_weight();
+            if (tw < INFINITY) can_calculate_leave_count += 1;
             if (incumbent > tw) incumbent = tw;
             // we update the invumbent solution
             return tw;
@@ -437,7 +459,10 @@ double forcedTSP( Graph &G,
     }     // if (G.numOfEdges() == 0),
           // that is, this is a leaf of the search tree
     else{
-
+      // G is not empty and F is cycle, then its not solution.
+        if (F.is_cycle()){
+          return INFINITY;
+        }
         /********************************************************
         *
         *     Add your own
@@ -448,9 +473,55 @@ double forcedTSP( Graph &G,
 
         // just pick an edge (is picking any edge good enough?)
         Edge e = *G.edges.begin();
-        double weight_e = G.weightMap[e];
-        // std::cout << "selected edge: " << e.first << e.second << '\n';
+        double weight_e = INFINITY;
 
+        std::vector<double> lb_array;
+        bool not_selected = true;
+        for (auto e_iter = G.edges.begin();e_iter != G.edges.end();e_iter++){
+          double w_i = G.weightMap[*e_iter];
+          lb_array.push_back(w_i);
+            // select edge that has min weight value.
+            if ((w_i < 32767) && (weight_e > w_i)){
+              if (F.numOfEdges() == 0 || (F.incList[(*e_iter).first].size() == 1 || F.incList[(*e_iter).second].size() == 1)){
+              std::cout << "\ncan select edge" << '\n';
+              if (!not_selected) std::cout << "edge is update by more less weight." << '\n';
+              F.print_incList();
+              e = *e_iter;
+              std::cout << "selected edge" << e.first << e.second << '\n';
+              std::cout << "weight: " << w_i << '\n';
+              weight_e = w_i;
+              not_selected = false;
+            }
+          }
+        }
+
+        if(not_selected){
+          std::cout << "cant select edge under INFINITY" << '\n';
+          F.print_incList();
+          return INFINITY;
+        }
+
+        // calculate detail lower bound for
+        int l = G.vertices.size() - F.vertices.size();
+        sort(lb_array.begin(), lb_array.end());
+        double lb_detail = lowerbound;
+        for(int i = 0; i < l; i++){
+          if (!(lb_array[i] < INFINITY)){
+            // not have edge under INFINITY.
+            std::cout << lb_array[i] << "is INFINITY." << '\n';
+            not_have_edge_under_inf ++;
+            return INFINITY;
+          }
+          lb_detail += lb_array[i];
+        }
+        if(lb_detail > incumbent){
+          // std::cout << "size of G vertices\t" << l << endl;
+          // std::cout << "size of F vertices\t" << F.vertices.size() << endl;
+          // std::cout << "lower bound before\t" << lowerbound<< endl;
+          // std::cout << "detail lower bound\t" << lb_detail << endl;
+          upper_lower_mis_detail ++;
+          return INFINITY;
+        }
 
         // prepare 2 copies of F
         Graph F_force(F);
@@ -480,11 +551,31 @@ double forcedTSP( Graph &G,
             if (e_i.first == e.second || e_i.second == e.second) count2 += 1;
         }
 
+        // std::cout << count1 <<count2 << '\n';
         // call the Force branch recursively
         double ans_force;
         double ans_lbound = lowerbound + weight_e;
-
-        if(count1 > 2 || count2 > 2 || ans_lbound > incumbent) {
+        bool Is_over_counter =  count1 > 2 || count2 > 2;
+        if(Is_over_counter || !(weight_e < INFINITY)) {
+            cant_make_cycle ++;
+            //
+            // if(Is_over_counter){
+            //   std::cout << "selected Edge [" << e.first << "," << e.second << "]"<< '\n';
+            //   auto vi = F.vertices.begin();
+            //   while(vi != F.vertices.end()){
+            //     std::cout << *vi << '\n';
+            //     vi++;
+            //   }
+            //
+            //   // std::cout << "not use edges" << '\n';
+            //   // for (auto e_iter = G.edges.begin();
+            //   //      e_iter != G.edges.end();
+            //   //      e_iter++) {
+            //   //     Edge e_i = *e_iter;
+            //   //     std::cout << e_i.first << e_i.second << '\n';
+            //   // }
+            //   F.print_incList();
+            // }
             // std::cout << "the route cant Hamiltonian root" << '\n';
             ans_force = INFINITY;
         }
@@ -649,5 +740,10 @@ int main(int argc, char **argv){
     // cout << "Optimal Route Length: " << solVal << endl;
     // cout << "The route:" << endl;
     // ff.print_incList();
-    std::cout << solTime << endl;
+    // std::cout << "solve time\t" << solTime << endl;
+    // std::cout << "calculable solution leave\t" << can_calculate_leave_count << endl;
+    // std::cout << "branches\t" << branches << '\n';
+    // std::cout << "leaves\t" << leaves << '\n';
+    // std::cout << "max_depth\t" << max_depth << '\n';
+    std::cout << solTime << " " << solVal << " " << branches << " " <<leaves << " " <<'\n';
 }
