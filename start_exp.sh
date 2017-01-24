@@ -4,7 +4,7 @@ g++ -std=gnu++11 -O3 $1 -o tsp_mine
 g++ -std=gnu++11 -O3 original_tsp.cpp -o tsp_original
 
 root_tsp="./new_tsp_instances"
-RUNORIGIN=1
+RUNORIGIN=0
 output_filepath=result.csv
 output_log=log.txt
 
@@ -25,19 +25,19 @@ make_csv_string(){
   fi
 }
 
-for p in 0.8 0.9 1.0; do
-  for n in 6 7 8 9 10; do
+for p in 0.9 1.0; do
+  for n in 6 7 8 9 10 12; do
     fp="$root_tsp/p_$p/n_$n"
     for f_name in $fp/*; do
       echo "$f_name"
 
-      if [ $RUNORIGIN -gt 0 ]; then
+      if [ $RUNORIGIN -eq 1 ]; then
         result=`./tsp_original < $f_name`
         make_csv_string $p $n $result "original" >> $output_filepath
         printf "original\t$result\n"
       fi
 
-      result=`./tsp_program < $f_name`
+      result=`./tsp_mine < $f_name`
       make_csv_string $p $n $result "mine" >> $output_filepath
       printf "mine\t$result\n"
     done

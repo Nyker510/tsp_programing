@@ -618,5 +618,5 @@ int main(int argc, char **argv){
         // cout << "Optimal Route Length: " << solVal << endl;
         // cout << "The route:" << endl;
         // ff.print_incList();
-        std::cout << solTime << endl;
+        std::cout << solTime << " " << solVal << endl;
 }

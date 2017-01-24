@@ -404,14 +404,6 @@ double forcedTSP( Graph &G,
         return INFINITY;
     }
 
-    // 残ったエッジの数を足してもcycleになりえない時探索終了
-    if (G.numOfEdges() + F.numOfEdges() < G.numOfVerts() * 2){
-      if(DEBUG){
-        std::cout << "stop search because lest edge is less than." << '\n';
-      }
-      return INFINITY;
-    }
-
     branches++;     // Let's just keep track how many times we've branched
     if (DEBUG) {
         // Print some messages to track the progress
@@ -475,32 +467,36 @@ double forcedTSP( Graph &G,
         Edge e = *G.edges.begin();
         double weight_e = INFINITY;
 
-        std::vector<double> lb_array;
         bool not_selected = true;
         for (auto e_iter = G.edges.begin();e_iter != G.edges.end();e_iter++){
           double w_i = G.weightMap[*e_iter];
-          lb_array.push_back(w_i);
             // select edge that has min weight value.
             if ((w_i < 32767) && (weight_e > w_i)){
               if (F.numOfEdges() == 0 || (F.incList[(*e_iter).first].size() == 1 || F.incList[(*e_iter).second].size() == 1)){
+
               std::cout << "\ncan select edge" << '\n';
-              if (!not_selected) std::cout << "edge is update by more less weight." << '\n';
               F.print_incList();
               e = *e_iter;
               std::cout << "selected edge" << e.first << e.second << '\n';
               std::cout << "weight: " << w_i << '\n';
               weight_e = w_i;
               not_selected = false;
+              break;
             }
           }
         }
 
         if(not_selected){
           std::cout << "cant select edge under INFINITY" << '\n';
+          std::cout << "best value " << incumbent << '\n';
           F.print_incList();
           return INFINITY;
         }
 
+        std::vector<double> lb_array;
+        for (auto e_iter = G.edges.begin();e_iter != G.edges.end();e_iter++){
+          lb_array.push_back(G.weightMap[*e_iter]);
+        }
         // calculate detail lower bound for
         int l = G.vertices.size() - F.vertices.size();
         sort(lb_array.begin(), lb_array.end());
@@ -515,10 +511,10 @@ double forcedTSP( Graph &G,
           lb_detail += lb_array[i];
         }
         if(lb_detail > incumbent){
-          // std::cout << "size of G vertices\t" << l << endl;
-          // std::cout << "size of F vertices\t" << F.vertices.size() << endl;
-          // std::cout << "lower bound before\t" << lowerbound<< endl;
-          // std::cout << "detail lower bound\t" << lb_detail << endl;
+          std::cout << "size of G vertices\t" << l << endl;
+          std::cout << "size of F vertices\t" << F.vertices.size() << endl;
+          std::cout << "lower bound before\t" << lowerbound<< endl;
+          std::cout << "detail lower bound\t" << lb_detail << endl;
           upper_lower_mis_detail ++;
           return INFINITY;
         }
