@@ -418,32 +418,6 @@ double forcedTSP( Graph &G,
         return INFINITY;
     }
 
-    int num_all_verts = F.numOfVerts() + G.numOfVerts();
-    if(num_all_verts * 2 <= num_of_edges) {
-        bool has_full_verts = false;
-        for (int i = 0; i < num_of_edges / 2; i++) {
-            for (auto v_iter = G.vertices.begin();
-                 v_iter != G.vertices.end();
-                 v_iter++) {
-                if (*v_iter == i) has_full_verts = true;
-            }
-            for (auto v_iter = F.vertices.begin();
-                 v_iter != F.vertices.end();
-                 v_iter++) {
-                if (*v_iter == i) has_full_verts = true;
-            }
-        }
-
-        if (!has_full_verts) {
-            if (DEBUG) {
-                std::cout << "no chance to have full verts." << std::endl;
-                F.print_incList();
-                G.print_incList();
-            }
-            return INFINITY;
-        }
-    }
-
     branches++;     // Let's just keep track how many times we've branched
     if (DEBUG) {
         // Print some messages to track the progress
@@ -507,35 +481,8 @@ double forcedTSP( Graph &G,
 
         // just pick an edge (is picking any edge good enough?)
         Edge e = *G.edges.begin();
-        double weight_e = INFINITY;
+        double weight_e = G.weightMap[e];
 
-        bool not_selected = true;
-        for (auto e_iter = G.edges.begin(); e_iter != G.edges.end(); e_iter++) {
-
-            double w_i = G.weightMap[*e_iter];
-            // w_i is INFINITY, the edge is not connected.
-            // so skip the edge
-            if (is_inf(w_i)) continue;
-
-            e = *e_iter;
-            // std::cout << "\nSelect Edge [" << e.first << "," << e.second << "]" << std::endl;
-            // update
-            weight_e = w_i;
-            not_selected = false;
-            break;
-        }
-
-        if(not_selected) {
-            // std::cout << "cant select edge" << '\n';
-            // std::cout << "graph G" << std::endl;
-            // G.print_incList();
-            // std::cout << "best value " << incumbent << '\n';
-            // std::cout << "Graph F" << std::endl;
-            // F.print_incList();
-            stop_none_edge_can_select++;
-            return INFINITY;
-        }
-        //
         // std::vector<double> weight_in_g_list;
         // for (auto e_iter = G.edges.begin(); e_iter != G.edges.end(); e_iter++) {
         //
@@ -582,11 +529,15 @@ double forcedTSP( Graph &G,
             F_force.addDirectedEdge(ee, G.weightMap[ee]);
         }
 
+        if (is_inf(weight_e)){
+          // w = INFINITYなのでforcedは計算不要
+          F = Graph(F_delete);
+          return forcedTSP(Gfd, F_delete, lowerbound);
+        }
         // std::cout << count1 <<count2 << '\n';
         // call the Force branch recursively
         double ans_force;
         double ans_lbound = lowerbound + weight_e;
-
         // forceをしたグラフを調べるべきか否かを判断する。
 
         int first_counter = 0;

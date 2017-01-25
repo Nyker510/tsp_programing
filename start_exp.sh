@@ -5,11 +5,11 @@ g++ -std=gnu++11 -O3 original_tsp.cpp -o tsp_original
 
 root_tsp="./new_tsp_instances"
 RUNORIGIN=0
-output_filepath=result.csv
+output_filepath=$2
 output_log=log.txt
 
 rm $output_filepath
-echo "p,n,millisecond,method" >> $output_filepath
+echo "p,n,time,optimal_value,branches,leaves,stop_forced_branch,stop_delete_branch,stop_bounding,sop_nonedge_can_select,method" >> $output_filepath
 
 make_csv_string(){
   if [ $# -eq 1 ]; then
@@ -25,8 +25,8 @@ make_csv_string(){
   fi
 }
 
-for p in 0.9 1.0; do
-  for n in 6 7 8 9 10 12; do
+for p in 0.3; do
+  for n in 6 7 8 9 10 12 14 16 18 20; do
     fp="$root_tsp/p_$p/n_$n"
     for f_name in $fp/*; do
       echo "$f_name"
